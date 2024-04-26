@@ -12,10 +12,8 @@ class WalletSerializer(serializers.ModelSerializer):
 
 class ScheduleWithdrawSerializer(serializers.Serializer):
     amount = serializers.IntegerField(min_value=1)
-    wallet = serializers.UUIDField()
     scheduled_time = serializers.DateTimeField()
 
 
-class CreateDepositView(serializers.Serializer):
+class CreateDepositSerializer(serializers.Serializer):
     amount = serializers.IntegerField(min_value=1)
-    wallet = serializers.UUIDField()
