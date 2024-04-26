@@ -32,6 +32,10 @@ services:
             - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
             - CELERY_BROKER=redis://redis:6379/0
             - CELERY_BACKEND=redis://redis:6379/0
+            - DB_HOST=pgdb
+            - DB_NAME=postgres
+            - DB_USER=db_user
+            - DB_PASS=db_pass
         depends_on:
             - django
             - redis
