@@ -3,7 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from wallets.models import Wallet
-from wallets.serializers import WalletSerializer, ScheduleWithdrawSerializer
+from wallets.serializers import (
+    WalletSerializer,
+    ScheduleWithdrawSerializer,
+    CreateDepositSerializer,
+)
 
 
 class CreateWalletView(CreateAPIView):
@@ -18,22 +22,23 @@ class RetrieveWalletView(RetrieveAPIView):
 
 class CreateDepositView(APIView):
     def post(self, request, *args, **kwargs):
-        # todo: update the wallet's balance and return proper response
-        serializer = CreateDepositView(data=request.data)
+        uuid = kwargs.get("uuid")
+        serializer = CreateDepositSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        wallet = Wallet.objects.get(uuid=serializer.validated_data["wallet"])
+        wallet = Wallet.objects.get(uuid=uuid)
         wallet.make_transaction(
             amount=serializer.validated_data["amount"], type="deposit"
         )
-
+        wallet.refresh_from_db()
         return Response({"status": "Deposit successful", "balance": wallet.balance})
 
 
 class ScheduleWithdrawView(APIView):
     def post(self, request, *args, **kwargs):
+        uuid = kwargs.get("uuid")
         serializer = ScheduleWithdrawSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        wallet = Wallet.objects.get(uuid=serializer.validated_data["wallet"])
+        wallet = Wallet.objects.get(uuid=uuid)
         wallet.make_transaction(
             amount=serializer.validated_data["amount"],
             type="withdraw",
