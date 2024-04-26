@@ -18,7 +18,7 @@ class Transaction(models.Model):
     transaction_type = models.CharField(
         choices=TYPES_CHOICES, max_length=20, default="deposit"
     )
-
+    scheduled_time = models.DateTimeField(null=True, blank=True)
     # todo: add fields if necessary
     pass
 
