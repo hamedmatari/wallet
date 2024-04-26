@@ -3,9 +3,16 @@ from celery.utils.log import get_task_logger
 from django.db.models import F
 from django.db.transaction import atomic
 from django.utils import timezone
+from requests.exceptions import ConnectionError
 
 from wallets.models import Transaction
-from wallets.utils import RedisLock
+from wallets.utils import (
+    RedisLock,
+    hit_transactions,
+    request_third_party_deposit,
+    release_lock,
+)
+from celery.exceptions import MaxRetriesExceededError
 
 logger = get_task_logger(__name__)
 
@@ -32,24 +39,37 @@ def queue_transactions():
 
 @shared_task(
     name="wallet.fire_transaction",
+    autoretry_for=(ConnectionError,),
+    retry_kwargs={"max_retries": 5, "countdown": 60},
 )
 def fire_transaction(transaction_id):
-    transaction = Transaction.objects.select_related("wallet").get(id)
+    transaction = Transaction.objects.select_related("wallet").get(id=transaction_id)
     wallet = transaction.wallet
+    lock_key = f"wallet:{transaction.wallet.uuid}"
 
     if transaction.transaction_type == "deposit":
-        wallet.balance = F("balance") + transaction.amount
-    elif transaction.transaction_type == "withdraw":
-        if wallet.balance >= transaction.amount:
-            with atomic():
-                wallet.balance = F("balance") - transaction.amount
-                wallet.save()
-                transaction.status = "completed"
-                transaction.save()
+        hit_transactions(wallet=wallet, transaction=transaction)
+    elif (
+        transaction.transaction_type == "withdraw"
+        and wallet.balance >= transaction.amount
+    ):
+        try:
+            content, ok = request_third_party_deposit()
+        except ConnectionError as e:
+            transaction.status = "retrying"
+            transaction.save(update_fields=["status"])
+            release_lock(lock_key)
+        except MaxRetriesExceededError as e:
+            transaction.status = "failed"
+            transaction.save(update_fields=["status"])
+            release_lock(lock_key)
+        if ok:
+            hit_transactions(wallet=wallet, transaction=transaction)
         else:
             transaction.status = "failed"
-            transaction.save()
+            transaction.save(update_fields=["status"])
+    else:
+        transaction.status = "failed"
+        transaction.save(update_fields=["status"])
 
-    lock_key = f"wallet:{transaction.wallet.uuid}"
-    lock = RedisLock(lock_key)
-    lock.release()
+    release_lock(lock_key)
