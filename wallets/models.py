@@ -5,6 +5,7 @@ from django.db.models import F
 from django.db.transaction import atomic
 
 from wallets.utils import RedisLock
+from django.utils import timezone
 
 
 class Transaction(models.Model):
@@ -12,6 +13,7 @@ class Transaction(models.Model):
         ("pending", "Pending"),
         ("completed", "Completed"),
         ("failed", "Failed"),
+        ("retrying", "Retrying"),
     )
     TYPES_CHOICES = (("withdraw", "Withdraw"), ("deposit", "Deposit"))
     amount = models.BigIntegerField()
@@ -31,7 +33,7 @@ class Wallet(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True)
     balance = models.BigIntegerField(default=0)
 
-    def make_transaction(self, amount, type, schedule_time=None):
+    def make_transaction(self, amount, type, schedule_time=timezone.now()):
 
         transaction = Transaction.objects.create(
             amount=amount,
