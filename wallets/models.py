@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import F
+from django.db.transaction import atomic
 
 from wallets.utils import RedisLock
 
@@ -21,6 +22,7 @@ class Transaction(models.Model):
     transaction_type = models.CharField(
         choices=TYPES_CHOICES, max_length=20, default="deposit"
     )
+    # It would be good if clear scheduled_time if type is deposit
     scheduled_time = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -42,7 +44,8 @@ class Wallet(models.Model):
         if type == "deposit":
             with RedisLock(f"wallet:{self.uuid}") as acquired:
                 if acquired:
-                    self.balance = F("balance") + amount
-                    self.save()
-                    transaction.status = "completed"
-                    transaction.save()
+                    with atomic():
+                        self.balance = F("balance") + amount
+                        self.save()
+                        transaction.status = "completed"
+                        transaction.save()
