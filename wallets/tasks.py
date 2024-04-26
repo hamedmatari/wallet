@@ -40,9 +40,10 @@ def queue_transactions():
 @shared_task(
     name="wallet.fire_transaction",
     autoretry_for=(ConnectionError,),
-    retry_kwargs={"max_retries": 5, "countdown": 60},
+    max_retries=2,
+    bind=True,
 )
-def fire_transaction(transaction_id):
+def fire_transaction(self, transaction_id):
     transaction = Transaction.objects.select_related("wallet").get(id=transaction_id)
     wallet = transaction.wallet
     lock_key = f"wallet:{transaction.wallet.uuid}"
@@ -56,13 +57,16 @@ def fire_transaction(transaction_id):
         try:
             content, ok = request_third_party_deposit()
         except ConnectionError as e:
-            transaction.status = "retrying"
-            transaction.save(update_fields=["status"])
-            release_lock(lock_key)
-        except MaxRetriesExceededError as e:
-            transaction.status = "failed"
-            transaction.save(update_fields=["status"])
-            release_lock(lock_key)
+            try:
+                transaction.status = "retrying"
+                transaction.save(update_fields=["status"])
+                release_lock(lock_key)
+                self.retry(exc=e, countdown=10)
+            except Exception as e:
+                transaction.status = "failed"
+                transaction.save(update_fields=["status"])
+                release_lock(lock_key)
+                return
         if ok:
             hit_transactions(wallet=wallet, transaction=transaction)
         else:
