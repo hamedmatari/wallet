@@ -1,5 +1,4 @@
-from contextlib import contextmanager
-
+from django.db.transaction import atomic
 import redis
 import requests
 from django.conf import settings
@@ -7,7 +6,23 @@ from django.conf import settings
 
 def request_third_party_deposit():
     response = requests.post("http://localhost:8010/")
-    return response.json()
+    return response.json(), response.ok
+
+
+def hit_transactions(wallet, transaction):
+    from django.db.models import F
+
+    with atomic():
+        wallet.balance = F("balance") + transaction.amount
+        transaction.status = "completed"
+        transaction.save()
+        wallet.save()
+
+
+def release_lock(uuid):
+    lock_key = f"wallet:{uuid}"
+    lock = RedisLock(lock_key)
+    lock.release()
 
 
 class RedisLock:
