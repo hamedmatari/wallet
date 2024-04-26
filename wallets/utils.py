@@ -22,12 +22,20 @@ class RedisLock:
         )
         self.lock_acquired = False
 
-    def __enter__(self):
-        self.lock_acquired = self.redis.set(
-            self.lock_id, "true", nx=True, px=self.timeout
-        )
+    def acquire(self):
+        if not self.lock_acquired:
+            self.lock_acquired = self.redis.set(
+                self.lock_id, "true", nx=True, px=self.timeout
+            )
         return self.lock_acquired
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def release(self):
         if self.lock_acquired:
             self.redis.delete(self.lock_id)
+            self.lock_acquired = False
+
+    def __enter__(self):
+        return self.acquire()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
