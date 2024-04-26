@@ -135,3 +135,18 @@ REST_FRAMEWORK = {
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://127.0.0.1:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_BACKEND", "redis://127.0.0.1:6379/0")
+
+# I preferred to not use django CACHES and connect to redis by my own
+
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis",
+#         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+#         "KEY_PREFIX": "example",
+#     }
+# }
+
+REDIS_HOST = "redis"
+REDIS_PORT = 6379
+REDIS_DB = 1
