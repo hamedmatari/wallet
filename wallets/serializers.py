@@ -8,3 +8,14 @@ class WalletSerializer(serializers.ModelSerializer):
         model = Wallet
         fields = ("uuid", "balance")
         read_only_fields = ("uuid", "balance")
+
+
+class ScheduleWithdrawSerializer(serializers.Serializer):
+    amount = serializers.IntegerField(min_value=1)
+    wallet = serializers.UUIDField()
+    scheduled_time = serializers.DateTimeField()
+
+
+class CreateDepositView(serializers.Serializer):
+    amount = serializers.IntegerField(min_value=1)
+    wallet = serializers.UUIDField()
