@@ -1,9 +1,2 @@
-# Wallet Service
-
-This is a basic project to bootstrap your coding for the interview task.
-You can find that models, views and urls have been partly implemented for you.
-In `wallets/utils.py` module you can find a function to send a request to 
-the third party service.
-
-Please complete the methods/classes marked with todo and introduce classes or
-functions wherever you find appropriate.
+# Wallet Service with Withdrawal Scheduling
+This wallet service is designed to handle concurrent requests efficiently by utilizing Django along with Celery for queuing tasks. When a withdrawal transaction is scheduled, the system queues the task to send a request to a third-party service, such as a bank, to deposit the specified amount into the user's account at the designated timestamp. By leveraging Celery for task management, the service can effectively manage multiple withdrawal requests and ensure timely processing while maintaining the integrity of the wallet balances.
